@@ -32,23 +32,24 @@ use Barryvdh\Reflection\DocBlock\Serializer as DocBlockSerializer;
  */
 class ModelsCommand extends Command
 {
-    protected $filename = '_ide_helper_models.php';
     protected $properties = [];
     protected $methods = [];
     protected $write = false;
     protected $dirs;
+    protected $filename;
     protected $reset;
     protected $settings;
 
     /**
      * @param array $settings
      */
-    public function __construct(array $settings = []) {
-        parent::__construct();
-
+    public function __construct(array $settings = [])
+    {
         $this->settings = $settings;
         $this->dirs = $this->fromSettings('modelDirectories', []);
+        $this->filename = $this->fromSettings('outputFile', '_ide_helper_models.php');
 
+        parent::__construct();
     }
 
     /**
@@ -106,7 +107,7 @@ class ModelsCommand extends Command
             }
         }
 
-        $content = $this->generateDocs($model, $ignore);
+        $content = $this->generateDocs($output, $model, $ignore);
 
         if (!$this->write) {
             if (file_put_contents($filename, $content, 0) != false) {
@@ -124,7 +125,7 @@ class ModelsCommand extends Command
      * @param OutputInterface $output
      * @return mixed
      */
-    private function confirmWrite(InputInterface $input, OutputInterface $output)
+    protected function confirmWrite(InputInterface $input, OutputInterface $output)
     {
         $helper = $this->getHelper('question');
         $question = new ConfirmationQuestion(
@@ -193,7 +194,7 @@ class ModelsCommand extends Command
                         // ignore abstract class or interface
                         continue;
                     }
-
+                    
                     /** @var Model $model */
                     $model = $reflectionClass->newInstanceWithoutConstructor();
 
@@ -386,9 +387,9 @@ class ModelsCommand extends Command
         if ($methods) {
             foreach ($methods as $method) {
                 if (Str::startsWith($method, 'get') && Str::endsWith(
-                    $method,
-                    'Attribute'
-                ) && $method !== 'getAttribute'
+                        $method,
+                        'Attribute'
+                    ) && $method !== 'getAttribute'
                 ) {
                     //Magic get<name>Attribute
                     $name = Str::snake(substr($method, 3, -9));
@@ -398,9 +399,9 @@ class ModelsCommand extends Command
                         $this->setProperty($name, $type, true, null);
                     }
                 } elseif (Str::startsWith($method, 'set') && Str::endsWith(
-                    $method,
-                    'Attribute'
-                ) && $method !== 'setAttribute'
+                        $method,
+                        'Attribute'
+                    ) && $method !== 'setAttribute'
                 ) {
                     //Magic set<name>Attribute
                     $name = Str::snake(substr($method, 3, -9));
@@ -436,15 +437,15 @@ class ModelsCommand extends Command
                     $code = substr($code, $begin, strrpos($code, '}') - $begin + 1);
 
                     foreach (array(
-                               'hasMany',
-                               'hasManyThrough',
-                               'belongsToMany',
-                               'hasOne',
-                               'belongsTo',
-                               'morphOne',
-                               'morphTo',
-                               'morphMany',
-                               'morphToMany'
+                                 'hasMany',
+                                 'hasManyThrough',
+                                 'belongsToMany',
+                                 'hasOne',
+                                 'belongsTo',
+                                 'morphOne',
+                                 'morphTo',
+                                 'morphMany',
+                                 'morphToMany'
                              ) as $relation) {
                         $search = '$this->' . $relation . '(';
                         if ($pos = stripos($code, $search)) {
