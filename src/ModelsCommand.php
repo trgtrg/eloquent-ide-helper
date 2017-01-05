@@ -18,12 +18,13 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\ClassLoader\ClassMapGenerator;
 use Barryvdh\Reflection\DocBlock;
 use Barryvdh\Reflection\DocBlock\Context;
 use Barryvdh\Reflection\DocBlock\Tag;
 use Barryvdh\Reflection\DocBlock\Serializer as DocBlockSerializer;
+use Symfony\Component\Console\Style\StyleInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * A command to generate autocomplete information for your IDE
@@ -39,6 +40,7 @@ class ModelsCommand extends Command
     protected $filename;
     protected $reset;
     protected $settings;
+    protected $verbosity;
 
     /**
      * @param array $settings
@@ -92,6 +94,7 @@ class ModelsCommand extends Command
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->verbosity = $output->getVerbosity();
         $this->dirs = array_merge($this->dirs, $input->getOption('dir'));
         $this->write = $input->getOption('write');
         $this->reset = $input->getOption('reset');
@@ -100,20 +103,29 @@ class ModelsCommand extends Command
         $ignore = $input->getOption('ignore');
         $model = $input->getArgument('model');
 
+        $io = new SymfonyStyle($input, $output);
+
         //If filename is default and Write is not specified, ask what to do
         if (!$this->write && $filename === $this->filename && !$input->getOption('nowrite')) {
-            if ($this->confirmWrite($input, $output)) {
+            $overwriteModels = $io->confirm(
+                "Do you want to overwrite the existing model files?\n
+                Choose no to write to $this->filename instead.\n
+                (Yes/No): ",
+                false
+            );
+
+            if ($overwriteModels) {
                 $this->write = true;
             }
         }
 
-        $content = $this->generateDocs($output, $model, $ignore);
+        $content = $this->generateDocs($io, $model, $ignore);
 
         if (!$this->write) {
             if (file_put_contents($filename, $content, 0) != false) {
-                $output->writeln("Model information was written to $filename");
+                $io->success("Model information was written to $filename");
             } else {
-                $output->writeln("Failed to write model information to $filename");
+                $io->error("Failed to write model information to $filename");
             }
         }
 
@@ -121,29 +133,12 @@ class ModelsCommand extends Command
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    protected function confirmWrite(InputInterface $input, OutputInterface $output)
-    {
-        $helper = $this->getHelper('question');
-        $question = new ConfirmationQuestion(
-            "Do you want to overwrite the existing model files? Choose no to write to $this->filename instead.\n
-             (Yes/No): ",
-            false
-        );
-
-        return $helper->ask($input, $output, $question);
-    }
-
-    /**
-     * @param OutputInterface $output
+     * @param StyleInterface $io
      * @param $loadModels
      * @param string $ignore
      * @return string|OutputInterface
      */
-    protected function generateDocs(OutputInterface $output, $loadModels, $ignore = '')
+    protected function generateDocs(StyleInterface $io, $loadModels, $ignore = '')
     {
         $docs = "<?php
 /**
@@ -170,8 +165,8 @@ class ModelsCommand extends Command
 
         foreach ($models as $name) {
             if (in_array($name, $ignore)) {
-                if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
-                    $output->writeln("Ignoring model '$name'");
+                if ($this->verbosity >= OutputInterface::VERBOSITY_VERBOSE) {
+                    $io->text("Ignoring model '$name'");
                 }
                 continue;
             }
@@ -186,15 +181,15 @@ class ModelsCommand extends Command
                         continue;
                     }
 
-                    if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
-                        $output->writeln("Loading model '$name'");
+                    if ($this->verbosity >= OutputInterface::VERBOSITY_VERBOSE) {
+                        $io->text("Loading model '$name'");
                     }
 
                     if (!$reflectionClass->isInstantiable()) {
                         // ignore abstract class or interface
                         continue;
                     }
-                    
+
                     /** @var Model $model */
                     $model = $reflectionClass->newInstanceWithoutConstructor();
 
@@ -207,18 +202,22 @@ class ModelsCommand extends Command
                     }
 
                     $this->getPropertiesFromMethods($model);
-                    $docs .= $this->createPhpDocs($output, $name);
+                    $docs .= $this->createPhpDocs($io, $name);
                     $ignore[] = $name;
                 } catch (\Exception $e) {
-                    $output->writeln("Exception: " . $e->getMessage());
-                    $output->writeln("Could not analyze class $name");
+                    $io->error([
+                        "Exception: " . $e->getMessage(),
+                        "Could not analyze class $name"
+                    ]);
                 }
             }
         }
 
         if (!$hasDoctrine) {
-            $output->writeln('Warning: `"doctrine/dbal": "~2.3"` is required to load database information. ');
-            $output->writeln('Please require that in your composer.json and run `composer update`.');
+            $io->warning([
+                'Warning: `"doctrine/dbal": "~2.3"` is required to load database information.',
+                'Please require that in your composer.json and run `composer update`.'
+            ]);
         }
 
         return $docs;
@@ -312,15 +311,18 @@ class ModelsCommand extends Command
      *
      * @param \Illuminate\Database\Eloquent\Model $model
      */
-    protected function getPropertiesFromTable($model)
+    protected function getPropertiesFromTable(Model $model)
     {
         $table = $model->getConnection()->getTablePrefix() . $model->getTable();
-        $schema = $model->getConnection()->getDoctrineSchemaManager($table);
+        $schema = $model->getConnection()->getDoctrineSchemaManager();
         $databasePlatform = $schema->getDatabasePlatform();
         $databasePlatform->registerDoctrineTypeMapping('enum', 'string');
 
         $platformName = $databasePlatform->getName();
-        $customTypes = $this->fromSettings("customDbTypes.{$platformName}", []);
+        $customDbTypes = $this->fromSettings("customDbTypes", []);
+
+        $customTypes = isset($customDbTypes[$platformName]) ? $customDbTypes[$platformName] : [];
+
         foreach ($customTypes as $yourTypeName => $doctrineTypeName) {
             $databasePlatform->registerDoctrineTypeMapping($yourTypeName, $doctrineTypeName);
         }
@@ -528,12 +530,12 @@ class ModelsCommand extends Command
     }
 
     /**
-     * @param OutputInterface $output
+     * @param StyleInterface $io
      * @param string $class
      * @return string
      * @throws \Exception
      */
-    protected function createPhpDocs(OutputInterface $output, $class)
+    protected function createPhpDocs(StyleInterface $io, $class)
     {
 
         $reflection = new \ReflectionClass($class);
@@ -620,7 +622,7 @@ class ModelsCommand extends Command
                 }
             }
             if (file_put_contents($filename, $contents, 0)) {
-                $output->writeln("Written new phpDocBlock to $filename");
+                $io->text("Written new phpDocBlock to $filename");
             }
         }
 
