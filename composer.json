@@ -1,5 +1,5 @@
 {
-    "name": "carterzenk/elqouent-ide-helper",
+    "name": "carterzenk/eloquent-ide-helper",
     "description": "A fork of barryvdh/laravel-ide-helper for generating model auto-completion outside of laravel.",
     "keywords": ["eloquent", "autocomplete", "ide", "helper", "phpstorm", "netbeans", "sublime", "codeintel", "phpdoc"],
     "license": "MIT",
