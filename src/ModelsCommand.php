@@ -100,9 +100,6 @@ class ModelsCommand extends Command
         $ignore = $input->getOption('ignore');
         $model = $input->getArgument('model');
 
-        $style = new SymfonyStyle($input, $output);
-
-
         //If filename is default and Write is not specified, ask what to do
         if (!$this->write && $filename === $this->filename && !$input->getOption('nowrite')) {
             if ($this->confirmWrite($input, $output)) {
@@ -114,9 +111,9 @@ class ModelsCommand extends Command
 
         if (!$this->write) {
             if (file_put_contents($filename, $content, 0) != false) {
-                $style->writeln("Model information was written to $filename");
+                $output->writeln("Model information was written to $filename");
             } else {
-                $style->error("Failed to write model information to $filename");
+                $output->writeln("Failed to write model information to $filename");
             }
         }
 
