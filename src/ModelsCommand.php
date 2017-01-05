@@ -108,9 +108,7 @@ class ModelsCommand extends Command
         //If filename is default and Write is not specified, ask what to do
         if (!$this->write && $filename === $this->filename && !$input->getOption('nowrite')) {
             $overwriteModels = $io->confirm(
-                "Do you want to overwrite the existing model files?\n
-                Choose no to write to $this->filename instead.\n
-                (Yes/No): ",
+                "Do you want to overwrite the existing model files? Choose no to write to $this->filename instead.",
                 false
             );
 
