@@ -10,6 +10,7 @@
 
 namespace CarterZenk\EloquentIdeHelper;
 
+use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
@@ -311,34 +312,14 @@ class ModelsCommand extends Command
      */
     protected function getPropertiesFromTable(Model $model)
     {
-        $table = $model->getConnection()->getTablePrefix() . $model->getTable();
-        $schema = $model->getConnection()->getDoctrineSchemaManager();
-        $databasePlatform = $schema->getDatabasePlatform();
-        $databasePlatform->registerDoctrineTypeMapping('enum', 'string');
-
-        $platformName = $databasePlatform->getName();
-        $customDbTypes = $this->fromSettings("customDbTypes", []);
-
-        $customTypes = isset($customDbTypes[$platformName]) ? $customDbTypes[$platformName] : [];
-
-        foreach ($customTypes as $yourTypeName => $doctrineTypeName) {
-            $databasePlatform->registerDoctrineTypeMapping($yourTypeName, $doctrineTypeName);
-        }
-
-        $database = null;
-        if (strpos($table, '.')) {
-            list($database, $table) = explode('.', $table);
-        }
-
-        $columns = $schema->listTableColumns($table, $database);
+        $columns = Manager::schema()->getColumnListing($model->getTable());
 
         if ($columns) {
             foreach ($columns as $column) {
-                $name = $column->getName();
-                if (in_array($name, $model->getDates())) {
+                if (in_array($column, $model->getDates())) {
                     $type = '\Carbon\Carbon';
                 } else {
-                    $type = $column->getType()->getName();
+                    $type = Manager::schema()->getColumnType($model->getTable(), $column);
                     switch ($type) {
                         case 'string':
                         case 'text':
@@ -367,10 +348,9 @@ class ModelsCommand extends Command
                     }
                 }
 
-                $comment = $column->getComment();
-                $this->setProperty($name, $type, true, true, $comment);
+                $this->setProperty($column, $type, true, true);
                 $this->setMethod(
-                    Str::camel("where_" . $name),
+                    Str::camel("where_" . $column),
                     '\Illuminate\Database\Query\Builder|\\' . get_class($model),
                     array('$value')
                 );
