@@ -36,6 +36,7 @@ class ModelsCommand extends Command
     protected $properties = [];
     protected $methods = [];
     protected $write = false;
+    protected $ignore;
     protected $dirs;
     protected $filename;
     protected $reset;
@@ -50,6 +51,7 @@ class ModelsCommand extends Command
         $this->settings = $settings;
         $this->dirs = $this->fromSettings('modelDirectories', []);
         $this->filename = $this->fromSettings('outputFile', '_ide_helper_models.php');
+        $this->ignore = $this->fromSettings('ignore', []);
 
         parent::__construct();
     }
@@ -78,10 +80,9 @@ class ModelsCommand extends Command
         $this->setHelp('Generates auto-completion for models.');
 
         $this->addArgument('model', InputArgument::OPTIONAL | InputArgument::IS_ARRAY, 'Which models to include', []);
-
         $this->addOption('filename', 'F', InputOption::VALUE_OPTIONAL, 'The path to the helper file', $this->filename);
-        $this->addOption('dir', 'D', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'The model dir', [] );
-        $this->addOption('ignore', 'I', InputOption::VALUE_OPTIONAL, 'Which models to ignore', '');
+        $this->addOption('dir', 'D', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'The model dirs', []);
+        $this->addOption('ignore', 'I', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'Which models to ignore', []);
         $this->addOption('write', 'W', InputOption::VALUE_NONE, 'Write to Model file');
         $this->addOption('nowrite', 'N', InputOption::VALUE_NONE, 'Don\'t write to Model file');
         $this->addOption('reset', 'R', InputOption::VALUE_NONE, 'Remove the original phpdocs instead of appending');
@@ -99,8 +100,8 @@ class ModelsCommand extends Command
         $this->write = $input->getOption('write');
         $this->reset = $input->getOption('reset');
 
+        $ignore = array_merge($this->ignore, $input->getOption('ignore'));
         $filename = $input->getOption('filename');
-        $ignore = $input->getOption('ignore');
         $model = $input->getArgument('model');
 
         $io = new SymfonyStyle($input, $output);
@@ -134,10 +135,10 @@ class ModelsCommand extends Command
     /**
      * @param StyleInterface $io
      * @param $loadModels
-     * @param string $ignore
+     * @param array $ignore
      * @return string|OutputInterface
      */
-    protected function generateDocs(StyleInterface $io, $loadModels, $ignore = '')
+    protected function generateDocs(StyleInterface $io, $loadModels, $ignore)
     {
         $docs = "<?php
 /**
@@ -159,8 +160,6 @@ class ModelsCommand extends Command
                 $models = array_merge($models, explode(',', $model));
             }
         }
-
-        $ignore = explode(',', $ignore);
 
         foreach ($models as $name) {
             if (in_array($name, $ignore)) {
