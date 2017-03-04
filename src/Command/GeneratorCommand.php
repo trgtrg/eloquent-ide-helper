@@ -21,7 +21,7 @@ class GeneratorCommand extends Command
         $this->setDescription('Facade IDE Helper');
         $this->setHelp('Generates auto-completion for Eloquent facades.');
 
-        $this->addArgument('filename', InputArgument::REQUIRED, 'The path to the helper file', '_ide_helper_facades.php');
+        $this->addArgument('filename', InputArgument::OPTIONAL, 'The path to the helper file', '_ide_helper_facades.php');
         $this->addOption('format', 'F', InputOption::VALUE_OPTIONAL, 'The format for the IDE Helper', 'php');
     }
 
@@ -34,7 +34,7 @@ class GeneratorCommand extends Command
     {
         $filename = $input->getArgument('filename');
         $format = $input->getOption('format');
-        
+
         $io = new SymfonyStyle($input, $output);
 
         $generator = new Generator();
