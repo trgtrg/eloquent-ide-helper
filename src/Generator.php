@@ -93,34 +93,33 @@ namespace  {
         foreach ($this->getNamespaces() as $namespace => $aliases) {
             foreach ($aliases as $alias) {
                 /** @var Alias $alias */
-                $docs .= "\t{$alias->getClasstype()} {$alias->getShortName()} extends {$alias->getExtends()} {";
+                $docs .= "    {$alias->getClasstype()} {$alias->getShortName()} extends {$alias->getExtends()} {\n";
 
                 if ($namespace === '\Illuminate\Database\Eloquent') {
                     foreach ($alias->getMethods() as $method) {
                         /** @var Method $method */
 
                         // Write method doc block.
-                        $docs .= "\n\t".trim($method->getDocComment(), '        ')."\n\n";
+                        $docs .= "\n\n    ".trim($method->getDocComment(), '        ')."\n";
 
                         // Write method declaration.
-                        $docs .= "\tpublic static function {$method->getName()}({$method->getParamsWithDefault()})\n";
-                        $docs .= "\t{";
+                        $docs .= "    public static function {$method->getName()}({$method->getParamsWithDefault()})\n";
+                        $docs .= "    {";
 
                         if ($method->getDeclaringClass() !== $method->getRoot()) {
                             $docs .= "\n\n";
-                            $docs .= "\t\t//Method inherited from {$method->getDeclaringClass()}";
+                            $docs .= "        //Method inherited from {$method->getDeclaringClass()}";
                         }
 
                         $docs .= "\n\n";
 
                         $return = $method->shouldReturn() ? 'return ' : '';
-                        $docs .= "\t\t{$return}{$method->getRoot()}::{$method->getName()}({$method->getParams()});\n";
-                        $docs .= "\t}";
-
+                        $docs .= "        {$return}{$method->getRoot()}::{$method->getName()}({$method->getParams()});\n";
+                        $docs .= "    }";
                     }
                 }
 
-                $docs .= "\n\t}\n\n";
+                $docs .= "\n    }\n\n";
             }
         }
 
