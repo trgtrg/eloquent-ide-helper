@@ -8,7 +8,7 @@
  * @link      https://github.com/barryvdh/laravel-ide-helper
  */
 
-namespace CarterZenk\EloquentIdeHelper;
+namespace CarterZenk\EloquentIdeHelper\Command;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -124,6 +124,7 @@ class ModelsCommand extends Command
                 $io->success("Model information was written to $filename");
             } else {
                 $io->error("Failed to write model information to $filename");
+                return 1;
             }
         }
 
@@ -535,72 +536,34 @@ class ModelsCommand extends Command
      */
     protected function createPhpDocs(StyleInterface $io, $class)
     {
-
         $reflection = new \ReflectionClass($class);
         $namespace = $reflection->getNamespaceName();
         $classname = $reflection->getShortName();
         $originalDoc = $reflection->getDocComment();
 
-        if ($this->reset) {
-            $phpdoc = new DocBlock('', new Context($namespace));
-        } else {
-            $phpdoc = new DocBlock($reflection, new Context($namespace));
-        }
+        $phpdoc = $this->getDocBlock($reflection, $namespace);
 
-        if (!$phpdoc->getText()) {
-            $phpdoc->setText($class);
-        }
-
-        $properties = array();
-        $methods = array();
+        // Override computed doc blocks if an existing doc block is present in the model.
+        $propertyOverrides = array();
+        $methodOverrides = array();
         foreach ($phpdoc->getTags() as $tag) {
             $name = $tag->getName();
             if ($name == "property" || $name == "property-read" || $name == "property-write") {
-                $properties[] = $tag->getVariableName();
+                $propertyOverrides[] = $tag->getVariableName();
             } elseif ($name == "method") {
-                $methods[] = $tag->getMethodName();
+                $methodOverrides[] = $tag->getMethodName();
             }
         }
 
-        foreach ($this->properties as $name => $property) {
-            $name = "\$$name";
-            if (in_array($name, $properties)) {
-                continue;
-            }
-            if ($property['read'] && $property['write']) {
-                $attr = 'property';
-            } elseif ($property['write']) {
-                $attr = 'property-write';
-            } else {
-                $attr = 'property-read';
-            }
+        // Append computed property tags to doc block.
+        $this->appendPropertyTags($phpdoc, $propertyOverrides);
 
-            if ($this->hasCamelCaseModelProperties()) {
-                $name = Str::camel($name);
-            }
-
-            $tagLine = trim("@{$attr} {$property['type']} {$name} {$property['comment']}");
-            $tag = Tag::createInstance($tagLine, $phpdoc);
-            $phpdoc->appendTag($tag);
-        }
-
-        foreach ($this->methods as $name => $method) {
-            if (in_array($name, $methods)) {
-                continue;
-            }
-            $arguments = implode(', ', $method['arguments']);
-            $tag = Tag::createInstance("@method static {$method['type']} {$name}({$arguments})", $phpdoc);
-            $phpdoc->appendTag($tag);
-        }
-
-        if ($this->write && ! $phpdoc->getTagsByName('mixin')) {
-            $phpdoc->appendTag(Tag::createInstance("@mixin \\Eloquent", $phpdoc));
-        }
+        // Append computed method tags to doc block.
+        $this->appendMethodTags($phpdoc, $methodOverrides);
 
         $serializer = new DocBlockSerializer();
         $serializer->getDocComment($phpdoc);
         $docComment = $serializer->getDocComment($phpdoc);
-
 
         if ($this->write) {
             $filename = $reflection->getFileName();
@@ -626,6 +589,67 @@ class ModelsCommand extends Command
 
         $output = "namespace {$namespace}{\n{$docComment}\n\tclass {$classname} extends \Eloquent {}\n}\n\n";
         return $output;
+    }
+
+    protected function appendPropertyTags(DocBlock $phpDoc, array $overrides)
+    {
+        foreach ($this->properties as $name => $property) {
+            $name = "\$$name";
+            if (in_array($name, $overrides)) {
+                continue;
+            }
+            if ($property['read'] && $property['write']) {
+                $attr = 'property';
+            } elseif ($property['write']) {
+                $attr = 'property-write';
+            } else {
+                $attr = 'property-read';
+            }
+
+            if ($this->hasCamelCaseModelProperties()) {
+                $name = Str::camel($name);
+            }
+
+            $tagLine = trim("@{$attr} {$property['type']} {$name} {$property['comment']}");
+            $tag = Tag::createInstance($tagLine, $phpDoc);
+            $phpDoc->appendTag($tag);
+        }
+    }
+
+    protected function appendMethodTags(DocBlock $phpDoc, array $overrides)
+    {
+        foreach ($this->methods as $name => $method) {
+            if (in_array($name, $overrides)) {
+                continue;
+            }
+            $arguments = implode(', ', $method['arguments']);
+            $tag = Tag::createInstance("@method static {$method['type']} {$name}({$arguments})", $phpDoc);
+            $phpDoc->appendTag($tag);
+        }
+
+        if ($this->write && !$phpDoc->getTagsByName('mixin')) {
+            $phpDoc->appendTag(Tag::createInstance("@mixin \\Eloquent", $phpDoc));
+        }
+    }
+
+    /**
+     * @param \ReflectionClass $reflection
+     * @param string $namespace
+     * @return DocBlock
+     */
+    protected function getDocBlock(\ReflectionClass $reflection, $namespace)
+    {
+        if ($this->reset) {
+            $phpDoc = new DocBlock('', new Context($namespace));
+        } else {
+            $phpDoc = new DocBlock($reflection, new Context($namespace));
+        }
+
+        if (!$phpDoc->getText()) {
+            $phpDoc->setText($reflection->getName());
+        }
+
+        return $phpDoc;
     }
 
     /**
