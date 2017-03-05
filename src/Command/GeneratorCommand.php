@@ -28,7 +28,7 @@ class GeneratorCommand extends Command
      */
     public function __construct(array $settings = [])
     {
-        $this->filename = isset($settings['filename']) ? $settings['filename'] : '_ide_helper_facades.php';
+        $this->filename = isset($settings['outputFile']) ? $settings['outputFile'] : '_ide_helper_facades.php';
         $this->format = isset($settings['format']) ? $settings['format'] : 'php';
 
         parent::__construct();
