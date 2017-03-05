@@ -13,6 +13,28 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class GeneratorCommand extends Command
 {
     /**
+     * @var string
+     */
+    protected $filename;
+
+    /**
+     * @var string
+     */
+    protected $format;
+
+    /**
+     * GeneratorCommand constructor.
+     * @param array $settings
+     */
+    public function __construct(array $settings = [])
+    {
+        $this->filename = isset($settings['filename']) ? $settings['filename'] : '_ide_helper_facades.php';
+        $this->format = isset($settings['format']) ? $settings['format'] : 'php';
+
+        parent::__construct();
+    }
+
+    /**
      * @inheritdoc
      */
     public function configure()
@@ -21,8 +43,8 @@ class GeneratorCommand extends Command
         $this->setDescription('Facade IDE Helper');
         $this->setHelp('Generates auto-completion for Eloquent facades.');
 
-        $this->addArgument('filename', InputArgument::OPTIONAL, 'The path to the helper file', '_ide_helper_facades.php');
-        $this->addOption('format', 'F', InputOption::VALUE_OPTIONAL, 'The format for the IDE Helper', 'php');
+        $this->addArgument('filename', InputArgument::OPTIONAL, 'The path to the helper file', $this->filename);
+        $this->addOption('format', 'F', InputOption::VALUE_OPTIONAL, 'The format for the IDE Helper', $this->format);
     }
 
     /**

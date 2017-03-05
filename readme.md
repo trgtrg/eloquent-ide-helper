@@ -13,7 +13,7 @@ Note: You do need CodeIntel for Sublime Text: https://github.com/SublimeCodeInte
 
 
 ### Configuration
-This command takes in an array of configuration options on construction.  These options define the default behavior when the command is run without options.
+The included commands take in an array of configuration options on construction.  These options define the default behavior when the commands are run without options.
 
 ```php
 $application = new Symfony\Component\Console\Application();
@@ -22,7 +22,12 @@ $application->add(new CarterZenk\EloquentIdeHelper\ModelsCommand([
     'modelDirectories' => [
         __DIR__.'/src/Models'
     ],
-    'outputFile' => __DIR__.'/cache/model_ide_helper.php'
+    'outputFile' => __DIR__.'/_ide_helper_models.php'
+]));
+
+$application->add(new CarterZenk\EloquentIdeHelper\Command\GeneratorCommand([
+    'outputFile' => __DIR__.'/_ide_helper_facades.php'
+    'format' => 'php'
 ]));
 
 $application->run();
@@ -83,6 +88,14 @@ php {your-script} ide-helper:models --ignore="Post,User"
 
 Note: With namespaces, wrap your model name in " signs: `php {your-script} ide-helper:models "API\User"`, or escape the slashes (`Api\\User`)
 
+
+### Automatic phpDocs for the Eloquent facade
+
+This command will generate autocomplete documentation for the magic methods in the Eloquent facade.
+
+```bash
+php {your-script} ide-helper:generator
+```
 
 ### License
 

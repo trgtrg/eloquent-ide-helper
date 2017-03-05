@@ -82,7 +82,7 @@ class ModelsCommand extends Command
         $this->addArgument('model', InputArgument::OPTIONAL | InputArgument::IS_ARRAY, 'Which models to include', []);
         $this->addOption('filename', 'F', InputOption::VALUE_OPTIONAL, 'The path to the helper file', $this->filename);
         $this->addOption('dir', 'D', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'The model dirs', []);
-        $this->addOption('ignore', 'I', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'Which models to ignore', []);
+        $this->addOption('ignore', 'I', InputOption::VALUE_OPTIONAL, 'Which models to ignore', "");
         $this->addOption('write', 'W', InputOption::VALUE_NONE, 'Write to Model file');
         $this->addOption('nowrite', 'N', InputOption::VALUE_NONE, 'Don\'t write to Model file');
         $this->addOption('reset', 'R', InputOption::VALUE_NONE, 'Remove the original phpdocs instead of appending');
@@ -100,7 +100,7 @@ class ModelsCommand extends Command
         $this->write = $input->getOption('write');
         $this->reset = $input->getOption('reset');
 
-        $ignore = array_merge($this->ignore, $input->getOption('ignore'));
+        $ignore = array_merge($this->ignore, explode(",", $input->getOption('ignore')));
         $filename = $input->getOption('filename');
         $model = $input->getArgument('model');
 
@@ -560,6 +560,10 @@ class ModelsCommand extends Command
         // Append computed method tags to doc block.
         $this->appendMethodTags($phpdoc, $methodOverrides);
 
+        if ($this->write && !$phpdoc->getTagsByName('mixin')) {
+            $phpdoc->appendTag(Tag::createInstance("@mixin \\Eloquent", $phpdoc));
+        }
+
         $serializer = new DocBlockSerializer();
         $serializer->getDocComment($phpdoc);
         $docComment = $serializer->getDocComment($phpdoc);
@@ -624,10 +628,6 @@ class ModelsCommand extends Command
             $arguments = implode(', ', $method['arguments']);
             $tag = Tag::createInstance("@method static {$method['type']} {$name}({$arguments})", $phpDoc);
             $phpDoc->appendTag($tag);
-        }
-
-        if ($this->write && !$phpDoc->getTagsByName('mixin')) {
-            $phpDoc->appendTag(Tag::createInstance("@mixin \\Eloquent", $phpDoc));
         }
     }
 
