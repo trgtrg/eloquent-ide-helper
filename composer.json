@@ -1,5 +1,5 @@
 {
-    "name": "carterzenk/eloquent-ide-helper",
+    "name": "trgtrg/eloquent-ide-helper",
     "description": "A fork of barryvdh/laravel-ide-helper for generating model auto-completion outside of laravel.",
     "keywords": ["eloquent", "autocomplete", "ide", "helper", "phpstorm", "netbeans", "sublime", "codeintel", "phpdoc"],
     "license": "MIT",
@@ -11,12 +11,16 @@
         {
             "name": "Carter Zenk",
             "email": "carterzenk@gmail.com"
+        },
+        {
+            "name": "Alex Treger",
+            "homepage": "https://github.com/trgtrg"
         }
     ],
     "require": {
         "php": ">=5.4.0",
-        "illuminate/database": "^5.0,<5.5",
-        "illuminate/support": "^5.0,<5.5",
+        "illuminate/database": "^5.0",
+        "illuminate/support": "^5.0",
         "barryvdh/reflection-docblock": "^2.0.4",
         "symfony/class-loader": "^2.3|^3.0",
         "symfony/console": "^3.1"
