@@ -44,16 +44,17 @@ class ModelsCommand extends Command
     protected $verbosity;
 
     /**
+     * @param string|null $name
      * @param array $settings
      */
-    public function __construct(array $settings = [])
+    public function __construct(string $name = null, array $settings = [])
     {
         $this->settings = $settings;
         $this->dirs = $this->fromSettings('modelDirectories', []);
         $this->filename = $this->fromSettings('outputFile', '_ide_helper_models.php');
         $this->ignore = $this->fromSettings('ignore', []);
 
-        parent::__construct();
+        parent::__construct($name);
     }
 
     /**

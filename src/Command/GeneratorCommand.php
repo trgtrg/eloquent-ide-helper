@@ -24,14 +24,16 @@ class GeneratorCommand extends Command
 
     /**
      * GeneratorCommand constructor.
+     *
+     * @param string|null $name
      * @param array $settings
      */
-    public function __construct(array $settings = [])
+    public function __construct(string $name = null, array $settings = [])
     {
         $this->filename = isset($settings['outputFile']) ? $settings['outputFile'] : '_ide_helper_facades.php';
         $this->format = isset($settings['format']) ? $settings['format'] : 'php';
 
-        parent::__construct();
+        parent::__construct($name);
     }
 
     /**
